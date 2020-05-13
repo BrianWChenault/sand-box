@@ -5,7 +5,7 @@ object Main  extends App {
   if (args.length == 2) {
     runCalculator(args(0), args(1))
   } else {
-    println(s"Invalid Arguments: \n - must specify a base time and an update")
+    println("Invalid Arguments: \n - must specify a base time and an update \nExample: run \"9:13 AM\" 200")
   }
 
   private def runCalculator(rawTime: String, rawUpdate: String): Unit = {

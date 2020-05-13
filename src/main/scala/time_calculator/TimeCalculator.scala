@@ -5,22 +5,29 @@ import scala.util.matching.Regex
 
 object TimeCalculator {
   lazy val timeFormat = """([0-9]{1,2}):([0-9]{2})\s(?i)(AM|PM)""".r
+  val minutesInPeriod = 12 * 60
 
   case class Time(hour: Int, minute: Int, period: String, error: ErrorHolder)
   case class Update(value: Int, error: ErrorHolder)
 
   def updateTime(time: Time, update: Update): Time = {
-    val hoursToIncrement = update.value / 60
-    val minutesToIncrement = update.value % 60
-    val incrementedHour = (time.hour + hoursToIncrement) % 12
-    val updatedHour = if (incrementedHour == 0) 12 else incrementedHour
-    val updatedMinute = (time.minute + minutesToIncrement) % 60
-    val shouldUpdatePeriod = (hoursToIncrement / 12) % 2 == 1
-    val updatedPeriod = if (shouldUpdatePeriod) {
-      if (time.period == "AM") "PM" else "AM"
+    // we shift from AM -> PM at 12, so for nice maths we will consider 12 our 0 hour
+    val workingHour = if (time.hour == 12) 0  else time.hour
+
+    val minutesPastPeriodBase = (workingHour * 60) + time.minute
+    val updatedMinutesPastPeriodBase = minutesPastPeriodBase + update.value
+    val minutesIntoCurrentPeriod = updatedMinutesPastPeriodBase % minutesInPeriod
+    val normalizedMinutesIntoCurrentPeriod = if (minutesIntoCurrentPeriod  < 0) {
+      minutesInPeriod + minutesIntoCurrentPeriod
     } else {
-      time.period
+      minutesIntoCurrentPeriod
     }
+
+    val updatedWorkingHour = normalizedMinutesIntoCurrentPeriod / 60
+    val updatedHour = if (updatedWorkingHour == 0) 12 else updatedWorkingHour
+    val updatedMinute = normalizedMinutesIntoCurrentPeriod % 60
+
+    val updatedPeriod = calculateNewPeriod(minutesPastPeriodBase, update.value, time.period)
 
     Time(
       hour = updatedHour,
@@ -30,6 +37,27 @@ object TimeCalculator {
     )
   }
 
+  private def calculateNewPeriod(minutesPastPeriodBase: Int, updateValue: Int, initialPeriod: String): String = {
+    val distanceToFirstTransition = if (updateValue < 0) {
+      minutesPastPeriodBase
+    } else {
+      minutesInPeriod - minutesPastPeriodBase
+    }
+    val normalizedUpdateDistance = Math.abs(updateValue)
+
+    if (normalizedUpdateDistance < distanceToFirstTransition) {
+      initialPeriod
+    } else {
+      val distancePastFirstTransition = normalizedUpdateDistance - distanceToFirstTransition
+      val numberOfTransitions = 1 + (distancePastFirstTransition / minutesInPeriod)
+      val isPeriodChange = numberOfTransitions % 2 == 1
+      if (isPeriodChange) {
+        if (initialPeriod == "AM") "PM" else "AM"
+      } else {
+        initialPeriod
+      }
+    }
+  }
 
   def extractUpdate(rawUpdate: String): Update = {
     Try {
