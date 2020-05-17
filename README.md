@@ -1,5 +1,3 @@
 This is a personal project for holding a variety of things.
 
-Here is some code which satisfies the problem statement I was given.  Just clone this repo, run sbt then use
-
-`run "<some_time>" <some_update>` 
+- Time Calculator: Given an input of a time string of format "(H)H:MM {AM|PM}" and a signed int, add that number of minutes to the time.  Restriction: Don't use any exising java time libraries.  Usage: `run "<some_time>" <some_update>` 
